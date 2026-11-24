@@ -2,21 +2,348 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Student Finance Manager</title>
   <style>
-    body{font-family:Arial;text-align:center;background:#f4f6fb}
-    h1{color:#0b5cff}
-    a{display:block;margin:10px auto;padding:10px 20px;width:220px;
-      background:#0b5cff;color:#fff;text-decoration:none;border-radius:8px}
-    a:hover{background:#0844b0}
+    :root {
+      --primary: #0b5cff;
+      --primary-dark: #0844b0;
+      --background: #f4f6fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #6b7280;
+      --income: #16803c;
+      --expense: #c53030;
+      --border: #dde3ef;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: var(--background);
+      color: var(--text);
+    }
+
+    main {
+      width: min(960px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+
+    h1 { margin: 0 0 24px; color: var(--primary); text-align: center; }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 4px 14px rgba(21, 37, 72, 0.06);
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .amount { font-size: 28px; font-weight: bold; }
+    .income { color: var(--income); }
+    .expense { color: var(--expense); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 16px;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font: inherit;
+    }
+
+    button {
+      margin-top: 16px;
+      border: 0;
+      background: var(--primary);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--primary-dark); }
+
+    .transactions-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .transactions-header h2 { margin: 0; }
+
+    .clear-button {
+      width: auto;
+      margin: 0;
+      padding: 7px 10px;
+      background: #eef2f8;
+      color: #4b5563;
+    }
+
+    .clear-button:hover { background: #e1e6ef; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    th { color: var(--muted); font-size: 13px; }
+
+    .delete-button {
+      width: auto;
+      margin: 0;
+      padding: 5px 8px;
+      background: transparent;
+      color: var(--expense);
+    }
+
+    .empty { color: var(--muted); text-align: center; padding: 24px 8px; }
+
+    .resources {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .resources a {
+      padding: 8px 12px;
+      color: var(--primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card);
+      text-decoration: none;
+    }
+
+    @media (max-width: 720px) {
+      .summary, .layout { grid-template-columns: 1fr; }
+      main { margin: 20px auto; }
+      th:nth-child(3), td:nth-child(3) { display: none; }
+    }
   </style>
 </head>
 <body>
-  <h1>Student Finance Manager</h1>
-  <a href="https://www.mint.com/" target="_blank">Expense Tracking</a>
-  <a href="https://www.ynab.com/" target="_blank">Budget Planning</a>
-  <a href="https://www.investopedia.com/" target="_blank">Financial Learning</a>
-  <a href="https://www.google.com/finance/" target="_blank">Analytics Dashboard</a>
-  <a href="https://www.bankrate.com/" target="_blank">Goal Tracking</a>
+  <main>
+    <h1>Student Finance Manager</h1>
+
+    <section class="summary" aria-label="Financial summary">
+      <article class="card">
+        <h2>Income</h2>
+        <div id="total-income" class="amount income">₹0.00</div>
+      </article>
+      <article class="card">
+        <h2>Expenses</h2>
+        <div id="total-expenses" class="amount expense">₹0.00</div>
+      </article>
+      <article class="card">
+        <h2>Balance</h2>
+        <div id="balance" class="amount">₹0.00</div>
+      </article>
+    </section>
+
+    <section class="layout">
+      <form id="transaction-form" class="card">
+        <h2>Add transaction</h2>
+
+        <label for="description">Description</label>
+        <input id="description" name="description" maxlength="40" placeholder="e.g. Lunch" required>
+
+        <label for="amount">Amount</label>
+        <input id="amount" name="amount" type="number" min="0.01" step="0.01" placeholder="0.00" required>
+
+        <label for="type">Type</label>
+        <select id="type" name="type">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+
+        <label for="category">Category</label>
+        <select id="category" name="category">
+          <option>Food</option>
+          <option>Transport</option>
+          <option>Books</option>
+          <option>Housing</option>
+          <option>Entertainment</option>
+          <option>Other</option>
+        </select>
+
+        <button type="submit">Add transaction</button>
+      </form>
+
+      <article class="card">
+        <div class="transactions-header">
+          <h2>Transactions</h2>
+          <button id="clear-all" class="clear-button" type="button">Clear all</button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Amount</th>
+              <th><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="transaction-list"></tbody>
+        </table>
+      </article>
+    </section>
+
+    <nav class="resources" aria-label="Finance resources">
+      <a href="https://www.mint.com/" target="_blank" rel="noopener noreferrer">Expense Tracking</a>
+      <a href="https://www.ynab.com/" target="_blank" rel="noopener noreferrer">Budget Planning</a>
+      <a href="https://www.investopedia.com/" target="_blank" rel="noopener noreferrer">Financial Learning</a>
+      <a href="https://www.google.com/finance/" target="_blank" rel="noopener noreferrer">Analytics</a>
+      <a href="https://www.bankrate.com/" target="_blank" rel="noopener noreferrer">Goal Tracking</a>
+    </nav>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "student-finance-transactions";
+    const form = document.getElementById("transaction-form");
+    const list = document.getElementById("transaction-list");
+    const clearButton = document.getElementById("clear-all");
+
+    let transactions = loadTransactions();
+
+    function loadTransactions() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveTransactions() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 2
+      }).format(value);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function render() {
+      const income = transactions
+        .filter((item) => item.type === "income")
+        .reduce((total, item) => total + item.amount, 0);
+      const expenses = transactions
+        .filter((item) => item.type === "expense")
+        .reduce((total, item) => total + item.amount, 0);
+
+      document.getElementById("total-income").textContent = formatMoney(income);
+      document.getElementById("total-expenses").textContent = formatMoney(expenses);
+      document.getElementById("balance").textContent = formatMoney(income - expenses);
+
+      if (transactions.length === 0) {
+        list.innerHTML = '<tr><td colspan="4" class="empty">No transactions yet.</td></tr>';
+        return;
+      }
+
+      list.innerHTML = transactions.map((item) => `
+        <tr>
+          <td>${escapeHtml(item.description)}</td>
+          <td>${escapeHtml(item.category)}</td>
+          <td class="${item.type}">${item.type === "income" ? "+" : "-"}${formatMoney(item.amount)}</td>
+          <td><button class="delete-button" type="button" data-id="${item.id}" aria-label="Delete ${escapeHtml(item.description)}">Delete</button></td>
+        </tr>
+      `).join("");
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventEvent?.();
+    });
+
+    form.onsubmit = (event) => {
+      event.preventDefault();
+
+      const data = new FormData(form);
+      const amount = Number(data.get("amount"));
+
+      if (!Number.isFinite(amount) || amount <= 0) return;
+
+      transactions.unshift({
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        description: data.get("description").trim(),
+        amount,
+        type: data.get("type"),
+        category: data.get("category")
+      });
+
+      saveTransactions();
+      form.reset();
+      render();
+      document.getElementById("description").focus();
+    };
+
+    list.addEventListener("click", (event) => {
+      const button = event.target.closest(".delete-button");
+      if (!button) return;
+
+      transactions = transactions.filter((item) => item.id !== button.dataset.id);
+      saveTransactions();
+      render();
+    });
+
+    clearButton.addEventListener("click", () => {
+      if (transactions.length === 0) return;
+      if (confirm("Clear all transactions?")) {
+        transactions = [];
+        saveTransactions();
+        render();
+      }
+    });
+
+    render();
+  </script>
 </body>
 </html>
